@@ -1,0 +1,23 @@
+{
+  "name": "scheduler-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch app/index.ts",
+    "prod": "node dist/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.4",
+    "express": "^5.2.1",
+    "node-schedule": "^2.1.1",
+    "sqlite3": "^5.1.7",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node-schedule": "^2.1.8"
+  }
+}
