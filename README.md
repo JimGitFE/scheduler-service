@@ -4,7 +4,7 @@ Deferred HTTP Request (Invocation). Job/Task Scheduling
 
 Use cas: Stateless servers
 
-- built vps docker `sudo docker build -t scheduler-app .`
+AWS VPS: `ssh -i ~/.ssh/<pem_key>.pem ubuntu@<ip>`
 
 ## Build VPS Docker
 
