@@ -2,47 +2,34 @@ import express from "express"
 import schedule from "node-schedule"
 
 const app = express()
-
 app.use(express.json())
-
-app.get("/", (req, res) => {res.send("Service running.")})
+app.get("/", (_, res) => res.send("Service running."))
 
 interface ScheduleBody {
-    execute_ts: String
-    interval_ms?: Number
-    end_ts?: String
-    endpoint_url: URL
-    fetch_request: RequestInit
+   execute_ts: number
+   interval_ms?: number
+   end_ts?: number
+   endpoint_url: URL
+   fetch_request: RequestInit
 }
 
-app.post("/schedule", async ({body: {execute_ts, ...ctx}}: {body: ScheduleBody}, res) => {
+app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, ...ctx } }: { body: ScheduleBody }, res) => {
+   if (!execute_ts || !ctx.endpoint_url || !ctx.fetch_request) return res.send("Failed")
 
-    const request = async (ctx: Omit<ScheduleBody, "execute_ts">) => {
-        await fetch(ctx.endpoint_url, ctx.fetch_request)
-        
-        // Reschedule
-    
-        if (ctx.interval_ms) {
-            const next_execution_ts = Number(execute_ts) + Number(ctx.interval_ms) * Math.ceil((Date.now() - Number(execute_ts)) / Number(ctx.interval_ms))
-            if (!ctx.end_ts || next_execution_ts < Number(ctx.end_ts)) {
-                await scheduleJob(String(next_execution_ts), request, ctx as Omit<ScheduleBody, "execute_ts">)
-            }
-        }
-    }
-    
-    // Add Req Job
+   /** Next Execution timestamp relative to `Date.now()` until `end_ts` */
+   const nextTs = () => (Math.max(execute_ts + interval_ms * Math.max(Math.ceil((Date.now() - execute_ts) / interval_ms), 0) - end_ts, 0) || NaN) + end_ts // prettier-ignore
 
-    await scheduleJob(execute_ts, request, ctx as Omit<ScheduleBody, "execute_ts">)
-    
-    // Respond
-    
-    res.send("Job Added.")
+   /** Job Schedule callback, invokes HTTP request & Reschedule on `interval_ms` & `end_ts` */
+   const request = async () => {
+      await fetch(ctx.endpoint_url, ctx.fetch_request).catch((e) => console.log("E: ", e, "\n")) // HTTP Request
+      if (nextTs()) await scheduleJob(nextTs(), request) // Reschedule
+   }
+
+   res.send(`Job Schedule ${scheduleJob(nextTs(), request) ? "Added" : "Failed"}`) // Respond
 })
 
-const scheduleJob = async <D extends object>(execute_ts: String, callback: (ctx: D) => Promise<void>, ctx: D) => {
-    schedule.scheduleJob(new Date(Number(execute_ts)), async () => {
-        await callback(ctx)
-    })
+const scheduleJob = <D extends object>(execute_ts: string | number, callback: (ctx: D) => Promise<void>, ctx?: D) => {
+   return schedule.scheduleJob(new Date(Number(execute_ts)), async () => await callback(ctx as D))
 }
 
 app.listen(3010)
