@@ -11,7 +11,7 @@ AWS VPS: `ssh -i ~/.ssh/<pem_key>.pem ubuntu@<ip>`
 1. `git pull origin main`
 2. `sudo docker build -t scheduler-service .`
 3. `docker rm -f scheduler-instance`
-4. `docker run -d --name scheduler-instance --restart always -p 3010:3010 -v $(pwd)/data:/app/data scheduler-service`
+4. `docker run -d --name scheduler-instance --restart always -p 80:80 -v $(pwd)/data:/app/data scheduler-service`
 5. `docker logs scheduler-instance`
 
 Low memory, temporary re-allocate in hard-disk
