@@ -14,7 +14,7 @@ interface ScheduleBody {
 }
 
 app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, ...ctx } }: { body: ScheduleBody }, res) => {
-   if (!execute_ts || !ctx.endpoint_url || !ctx.fetch_request) return res.send("Failed")
+   if (typeof execute_ts !== "number" || !ctx.endpoint_url || !ctx.fetch_request) return ((res.statusCode = 400), res.send("Bad Body"))
 
    /** Next Execution timestamp relative to `Date.now()` until `end_ts` */
    const nextTs = () => (Math.max(execute_ts + interval_ms * Math.max(Math.ceil((Date.now() - execute_ts) / interval_ms), 0) - end_ts, 0) || NaN) + end_ts // prettier-ignore
@@ -25,24 +25,25 @@ app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, 
       if (nextTs()) await scheduleJob(nextTs(), request) // Reschedule
    }
 
-   res.send(`Job Schedule ${scheduleJob(nextTs(), request) ? "Added" : "Failed"}`) // Respond
+   res.send(`Job Schedule ${scheduleJob(nextTs(), request) ? "Added" : "Failed"}`)
 })
 
 const scheduleJob = <D extends object>(execute_ts: string | number, callback: (ctx: D) => Promise<void>, ctx?: D) => {
    return schedule.scheduleJob(new Date(Number(execute_ts)), async () => await callback(ctx as D))
 }
 
-app.listen(3010)
+app.listen(80)
 
 /*
-curl -X POST http://localhost:3010/schedule \
+curl -X POST http://localhost:80/schedule \
 -H "Content-Type: application/json" \
 -d '{
-    "execute_ts": "1770431352262",
-    "interval_ms": 10000,
-    "endpoint_url": "https://google.com",
+    "execute_at": 1770512373921,
+    "interval_ms": 4000,
+    "endpoint_url": "http://127.0.0.1:8000/api/system/wakeup",
     "fetch_request": {
-      "method": "GET"
+        "method": "POST",
+        "body": "{\"name\": \"Finance News\", \"target_tool\": \"get_news\", \"target_args\": {\"topic\": \"egyptology\"}, \"chat_id\": \"12345\"}"
     }
 }'
 */
