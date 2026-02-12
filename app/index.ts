@@ -17,7 +17,10 @@ app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, 
    if (typeof execute_ts !== "number" || !ctx.endpoint_url || !ctx.fetch_request) return ((res.statusCode = 400), res.send("Bad Body"))
 
    /** Next Execution timestamp relative to `Date.now()` until `end_ts` */
-   const nextTs = () => (Math.max(execute_ts + interval_ms * Math.max(Math.ceil((Date.now() - execute_ts) / interval_ms), 0) - end_ts, 0) || NaN) + end_ts // prettier-ignore
+   const nextTs = () => {
+      const nextExecution = Math.min(execute_ts + interval_ms * Math.ceil((Date.now() - execute_ts) / interval_ms), end_ts)
+      return Date.now() < nextExecution ? nextExecution : NaN
+   }
 
    /** Job Schedule callback, invokes HTTP request & Reschedule on `interval_ms` & `end_ts` */
    const request = async () => {
