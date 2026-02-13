@@ -13,12 +13,15 @@ interface ScheduleBody {
    fetch_request: RequestInit
 }
 
-app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, ...ctx } }: { body: ScheduleBody }, res) => {
+app.post("/schedule", async ({ body: { execute_ts, ...ctx } }: { body: ScheduleBody }, res) => {
    if (typeof execute_ts !== "number" || !ctx.endpoint_url || !ctx.fetch_request) return ((res.statusCode = 400), res.send("Bad Body"))
 
    /** Next Execution timestamp relative to `Date.now()` until `end_ts` */
    const nextTs = () => {
-      const nextExecution = Math.min(execute_ts + interval_ms * Math.ceil((Date.now() - execute_ts) / interval_ms), end_ts)
+      const [interval_ms, end_ts] = [ctx.interval_ms ?? 0, ctx.end_ts ?? Infinity]
+      const intervalOffset = interval_ms * Math.ceil((Date.now() - execute_ts) / interval_ms)
+      const nextExecution = Math.min(execute_ts + (intervalOffset || 0), end_ts)
+      console.log(interval_ms, end_ts, nextExecution)
       return Date.now() < nextExecution ? nextExecution : NaN
    }
 
@@ -32,7 +35,8 @@ app.post("/schedule", async ({ body: { execute_ts, interval_ms = 0, end_ts = 0, 
 })
 
 const scheduleJob = <D extends object>(execute_ts: string | number, callback: (ctx: D) => Promise<void>, ctx?: D) => {
-   return schedule.scheduleJob(new Date(Number(execute_ts)), async () => await callback(ctx as D))
+   console.log("Scheduling Job at: ", new Date(Number(execute_ts)), " with context: ", ctx, execute_ts)
+   return execute_ts && schedule.scheduleJob(new Date(Number(execute_ts)), async () => await callback(ctx as D))
 }
 
 app.listen(80)
